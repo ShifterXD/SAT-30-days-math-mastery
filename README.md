@@ -6,7 +6,7 @@ A personal, portfolio-ready SAT Math practice web app for a 30-day sprint.
 
 - **Day-based SAT calendar:** Day 1 through Day 30 slots.
 - **Day 1 ready:** 50 College Board SAT Suite Question Bank questions on **Linear equations in one variable**.
-- **Test-like flow:** question navigator, answer selection, student-produced response input, marked-for-review state, finish/review screen.
+- **Bluebook-inspired testing UI:** navy exam header, timer, toolbar, question rail, bottom navigation, mark-for-review, answer panel, and review screen.
 - **Answers hidden while practicing:** scoring appears only on the review screen.
 - **Future-proof data model:** add `src/data/day2.json`, images in `public/day-assets/day-2/`, then connect the day in `src/data/practiceDays.ts`.
 
