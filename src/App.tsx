@@ -12,7 +12,8 @@ import {
   MoreHorizontal,
   PanelLeftClose,
   RotateCcw,
-  Trophy
+  Trophy,
+  X
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { practiceDays, type PracticeDay, type Question } from './data/practiceDays';
@@ -20,6 +21,8 @@ import { practiceDays, type PracticeDay, type Question } from './data/practiceDa
 type Answers = Record<string, string>;
 type Mode = 'home' | 'test' | 'review';
 type Flagged = Record<string, boolean>;
+
+type CalculatorKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '.' | '+' | '-' | '×' | '÷' | '(' | ')';
 
 const STORAGE_KEY = 'sat-30-days-math-mastery:v2';
 const FLAG_KEY = 'sat-30-days-math-mastery:flags';
@@ -57,6 +60,20 @@ function formatTime(seconds: number) {
 
 function questionImageSrc(question: Question) {
   return `${import.meta.env.BASE_URL}${question.image.replace(/^\//, '')}`;
+}
+
+function evaluateCalculatorExpression(expression: string) {
+  const normalized = expression.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+  if (!normalized.trim()) return '';
+  if (!/^[\d+\-*/().\s]+$/.test(normalized)) return 'Error';
+
+  try {
+    const result = Function(`"use strict"; return (${normalized});`)() as unknown;
+    if (typeof result !== 'number' || !Number.isFinite(result)) return 'Error';
+    return Number.isInteger(result) ? String(result) : String(Number(result.toFixed(10)));
+  } catch {
+    return 'Error';
+  }
 }
 
 function DayTile({ day, active, onSelect }: { day: PracticeDay; active: boolean; onSelect: () => void }) {
@@ -147,12 +164,72 @@ function LaunchScreen({
   );
 }
 
-function ToolButton({ icon, label }: { icon: ReactNode; label: string }) {
+function ToolButton({ icon, label, onClick, active = false }: { icon: ReactNode; label: string; onClick?: () => void; active?: boolean }) {
   return (
-    <button className="tool-button">
+    <button className={`tool-button ${active ? 'active' : ''}`} onClick={onClick}>
       {icon}
       <span>{label}</span>
     </button>
+  );
+}
+
+function SATCalculator({ onClose }: { onClose: () => void }) {
+  const [expression, setExpression] = useState('');
+  const [memory, setMemory] = useState<number | null>(null);
+  const displayValue = expression || '0';
+
+  const append = (value: CalculatorKey) => setExpression((current) => (current === 'Error' ? value : `${current}${value}`));
+  const evaluate = () => setExpression((current) => evaluateCalculatorExpression(current));
+  const clear = () => setExpression('');
+  const backspace = () => setExpression((current) => (current === 'Error' ? '' : current.slice(0, -1)));
+  const currentNumber = () => {
+    const value = Number(evaluateCalculatorExpression(expression));
+    return Number.isFinite(value) ? value : 0;
+  };
+
+  const keys: Array<CalculatorKey | 'AC' | '⌫' | '='> = [
+    'AC', '(', ')', '÷',
+    '7', '8', '9', '×',
+    '4', '5', '6', '-',
+    '1', '2', '3', '+',
+    '0', '.', '⌫', '='
+  ];
+
+  return (
+    <aside className="sat-calculator" aria-label="SAT calculator">
+      <div className="calc-header">
+        <div>
+          <strong>Calculator</strong>
+          <span>Basic SAT math tool</span>
+        </div>
+        <button className="calc-close" onClick={onClose} aria-label="Close calculator"><X size={18} /></button>
+      </div>
+      <div className="calc-display" aria-live="polite">{displayValue}</div>
+      <div className="calc-memory-row">
+        <button onClick={() => setMemory(currentNumber())}>MS</button>
+        <button onClick={() => memory !== null && setExpression((current) => `${current}${memory}`)}>MR</button>
+        <button onClick={() => setMemory(null)}>MC</button>
+      </div>
+      <div className="calc-keypad">
+        {keys.map((key) => {
+          const isOperator = ['÷', '×', '-', '+', '='].includes(key);
+          return (
+            <button
+              key={key}
+              className={`${isOperator ? 'operator' : ''} ${key === '=' ? 'equals' : ''}`}
+              onClick={() => {
+                if (key === 'AC') clear();
+                else if (key === '⌫') backspace();
+                else if (key === '=') evaluate();
+                else append(key);
+              }}
+            >
+              {key}
+            </button>
+          );
+        })}
+      </div>
+    </aside>
   );
 }
 
@@ -251,6 +328,7 @@ function TestScreen({
   setTimerHidden: (hidden: boolean) => void;
 }) {
   const progress = ((questionIndex + 1) / selectedDay.questions.length) * 100;
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
 
   return (
     <main className="bluebook-shell">
@@ -269,7 +347,7 @@ function TestScreen({
         <div className="toolbar-strip">
           <ToolButton icon={<CircleHelp size={18} />} label="Directions" />
           <ToolButton icon={<Highlighter size={18} />} label="Highlights & Notes" />
-          <ToolButton icon={<Calculator size={18} />} label="Calculator" />
+          <ToolButton icon={<Calculator size={18} />} label="Calculator" active={calculatorOpen} onClick={() => setCalculatorOpen((open) => !open)} />
           <ToolButton icon={<MoreHorizontal size={18} />} label="More" />
         </div>
       </header>
@@ -281,6 +359,7 @@ function TestScreen({
       </div>
 
       <div className="bb-workspace">
+        {calculatorOpen && <SATCalculator onClose={() => setCalculatorOpen(false)} />}
         <QuestionRail questions={selectedDay.questions} currentIndex={questionIndex} answers={answers} flagged={flagged} setQuestionIndex={setQuestionIndex} />
 
         <section className="question-stage">
