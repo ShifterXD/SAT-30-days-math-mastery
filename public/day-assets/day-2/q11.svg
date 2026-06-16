@@ -3,5 +3,5 @@
   <rect x="28" y="28" width="1044" height="664" rx="28" fill="#ffffff" stroke="#d8dde8" stroke-width="3"/>
   <rect x="28" y="28" width="1044" height="78" rx="28" fill="#eef4ff"/>
   <text x="54" y="78" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#1d4ed8">SAT Math · Day 2 · Linear Functions</text>
-  <g font-family="Arial, Helvetica, sans-serif"><text x="58" y="150" font-size="26" font-weight="700" fill="#172033">Question 11</text><text x="58" y="190" font-size="24" font-weight="500" fill="#172033">A taxi charges $5 plus $2.50 per mile. What is the cost, in dollars, for 8 miles?</text></g>
+  <g font-family="Arial, Helvetica, sans-serif"><text x="58" y="150" font-size="26" font-weight="700" fill="#172033">Question 11</text><text x="58" y="190" font-size="24" font-weight="500" fill="#172033"><tspan x="58" dy="0">A taxi charges $5 plus $2.50 per mile. What is the cost, in dollars, for</tspan><tspan x="58" dy="32">8 miles?</tspan></text></g>
 </svg>
