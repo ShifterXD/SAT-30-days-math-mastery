@@ -31,6 +31,47 @@ function normalizeAnswer(answer: string) {
   return answer.trim().toUpperCase().replace(/\s+/g, '');
 }
 
+function splitAcceptedAnswers(answer: string) {
+  return answer
+    .split(/[,;]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function parseNumericAnswer(answer: string) {
+  const normalized = normalizeAnswer(answer).replace(/[−–—]/g, '-');
+  if (!normalized) return null;
+
+  const fraction = normalized.match(/^([+-]?\d+(?:\.\d+)?)\/([+-]?\d+(?:\.\d+)?)$/);
+  if (fraction) {
+    const numerator = Number(fraction[1]);
+    const denominator = Number(fraction[2]);
+    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null;
+    return numerator / denominator;
+  }
+
+  if (/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(normalized)) {
+    const value = Number(normalized);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  return null;
+}
+
+function answersMatch(userAnswer: string, correctAnswer: string) {
+  const user = normalizeAnswer(userAnswer);
+  if (!user) return false;
+
+  return splitAcceptedAnswers(correctAnswer).some((acceptedAnswer) => {
+    const accepted = normalizeAnswer(acceptedAnswer);
+    if (user === accepted) return true;
+
+    const userNumber = parseNumericAnswer(userAnswer);
+    const acceptedNumber = parseNumericAnswer(acceptedAnswer);
+    return userNumber !== null && acceptedNumber !== null && Math.abs(userNumber - acceptedNumber) < 1e-9;
+  });
+}
+
 function loadJson<T>(key: string, fallback: T): T {
   try {
     return JSON.parse(localStorage.getItem(key) || '') as T;
@@ -45,7 +86,7 @@ function saveJson<T>(key: string, value: T) {
 
 function scoreDay(day: PracticeDay, answers: Answers) {
   const answered = day.questions.filter((q) => answers[q.id]?.trim()).length;
-  const correct = day.questions.filter((q) => normalizeAnswer(answers[q.id] || '') === normalizeAnswer(q.answer)).length;
+  const correct = day.questions.filter((q) => answersMatch(answers[q.id] || '', q.answer)).length;
   const total = day.questions.length;
   return { answered, correct, total, percent: total ? Math.round((correct / total) * 100) : 0 };
 }
@@ -195,6 +236,45 @@ function SATCalculator({ onClose }: { onClose: () => void }) {
     '0', '.', '⌫', '='
   ];
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
+
+      const keyMap: Record<string, CalculatorKey> = {
+        '*': '×',
+        x: '×',
+        X: '×',
+        '/': '÷'
+      };
+      const rawKey = event.key;
+      const mappedKey = keyMap[rawKey] || rawKey;
+
+      if (/^[0-9.+\-()]$/.test(mappedKey)) {
+        event.preventDefault();
+        append(mappedKey as CalculatorKey);
+      } else if (mappedKey === '×' || mappedKey === '÷') {
+        event.preventDefault();
+        append(mappedKey);
+      } else if (rawKey === 'Enter' || rawKey === '=') {
+        event.preventDefault();
+        evaluate();
+      } else if (rawKey === 'Backspace') {
+        event.preventDefault();
+        backspace();
+      } else if (rawKey === 'Escape') {
+        event.preventDefault();
+        onClose();
+      } else if (rawKey.toLowerCase() === 'c') {
+        event.preventDefault();
+        clear();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <aside className="sat-calculator" aria-label="SAT calculator">
       <div className="calc-header">
@@ -276,7 +356,9 @@ function AnswerPanel({ question, answer, setAnswer }: { question: Question; answ
           value={answer || ''}
           onChange={(event) => setAnswer(event.target.value)}
           placeholder="Type your answer"
-          inputMode="decimal"
+          inputMode="text"
+          autoComplete="off"
+          spellCheck={false}
         />
       </section>
     );
@@ -421,7 +503,7 @@ function ReviewScreen({ selectedDay, answers, stats, setMode, setQuestionIndex }
       <section className="review-table">
         {selectedDay.questions.map((question, index) => {
           const user = answers[question.id] || '';
-          const ok = normalizeAnswer(user) === normalizeAnswer(question.answer);
+          const ok = answersMatch(user, question.answer);
           return (
             <button key={question.id} className="review-row" onClick={() => { setQuestionIndex(index); setMode('test'); }}>
               <span className={`row-number ${ok ? 'ok' : 'missed'}`}>{question.number}</span>

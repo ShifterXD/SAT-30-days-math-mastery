@@ -1,4 +1,5 @@
 import day1 from './day1.json';
+import day2 from './day2.json';
 
 export type QuestionType = 'multiple-choice' | 'student-produced-response';
 
@@ -41,5 +42,13 @@ export const practiceDays: PracticeDay[] = [
     status: 'ready',
     questions: day1 as Question[]
   },
-  ...Array.from({ length: 29 }, (_, index) => emptyDay(index + 2))
+  {
+    day: 2,
+    title: 'Day 2',
+    focus: 'Linear functions',
+    durationMinutes: 70,
+    status: 'ready',
+    questions: day2 as Question[]
+  },
+  ...Array.from({ length: 28 }, (_, index) => emptyDay(index + 3))
 ];
